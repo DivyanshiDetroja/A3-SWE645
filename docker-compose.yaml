@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: survey-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: survey_db
+      MYSQL_USER: survey
+      MYSQL_PASSWORD: survey_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - survey-network
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: survey-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_HOST: mysql
+      DB_NAME: survey_db
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - survey-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: survey-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - survey-network
+    restart: unless-stopped
+
+networks:
+  survey-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+
+
