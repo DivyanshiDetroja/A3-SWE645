@@ -58,7 +58,7 @@ pipeline {
         stage('Update Kubernetes Manifests') {
             steps {
                 script {
-                        sh '''
+                    sh '''
                         # Update image tags in Kubernetes manifests
                         sed -i "s|divyanshidetroja/hw3-survey-backend:latest|${DOCKER_REGISTRY}/hw3-survey-backend:${IMAGE_TAG}|g" k8s/backend-deployment.yaml
                         sed -i "s|divyanshidetroja/hw3-survey-frontend:latest|${DOCKER_REGISTRY}/hw3-survey-frontend:${IMAGE_TAG}|g" k8s/frontend-deployment.yaml
@@ -70,20 +70,22 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh '''
-                            export KUBECONFIG=${KUBECONFIG}
-                            # Apply Kubernetes manifests
-                            kubectl apply -f k8s/namespace.yaml
-                            kubectl apply -f k8s/secrets.yaml
-                            kubectl apply -f k8s/mysql-deployment.yaml
-                            kubectl apply -f k8s/backend-deployment.yaml
-                            kubectl apply -f k8s/frontend-deployment.yaml
-                            
-                            # Wait for deployments to be ready
-                            kubectl wait --for=condition=available --timeout=300s deployment/backend-deployment -n survey-app
-                            kubectl wait --for=condition=available --timeout=300s deployment/frontend-deployment -n survey-app
-                        '''
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                            sh '''
+                                export KUBECONFIG=${KUBECONFIG}
+                                # Apply Kubernetes manifests
+                                kubectl apply -f k8s/namespace.yaml
+                                kubectl apply -f k8s/secrets.yaml
+                                kubectl apply -f k8s/mysql-deployment.yaml
+                                kubectl apply -f k8s/backend-deployment.yaml
+                                kubectl apply -f k8s/frontend-deployment.yaml
+                                
+                                # Wait for deployments to be ready
+                                kubectl wait --for=condition=available --timeout=300s deployment/backend-deployment -n survey-app
+                                kubectl wait --for=condition=available --timeout=300s deployment/frontend-deployment -n survey-app
+                            '''
+                        }
                     }
                 }
             }
@@ -92,15 +94,17 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh '''
-                            export KUBECONFIG=${KUBECONFIG}
-                            # Check if pods are running
-                            kubectl get pods -n survey-app
-                            
-                            # Check services
-                            kubectl get svc -n survey-app
-                        '''
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                            sh '''
+                                export KUBECONFIG=${KUBECONFIG}
+                                # Check if pods are running
+                                kubectl get pods -n survey-app
+                                
+                                # Check services
+                                kubectl get svc -n survey-app
+                            '''
+                        }
                     }
                 }
             }
