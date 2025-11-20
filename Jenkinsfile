@@ -4,7 +4,6 @@ pipeline {
     environment {
         DOCKER_REGISTRY = 'divyanshidetroja'  // Docker Hub username
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        KUBECONFIG = credentials('kubeconfig')  // Kubernetes config credentials
     }
     
     stages {
@@ -71,18 +70,21 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    sh '''
-                        # Apply Kubernetes manifests
-                        kubectl apply -f k8s/namespace.yaml
-                        kubectl apply -f k8s/secrets.yaml
-                        kubectl apply -f k8s/mysql-deployment.yaml
-                        kubectl apply -f k8s/backend-deployment.yaml
-                        kubectl apply -f k8s/frontend-deployment.yaml
-                        
-                        # Wait for deployments to be ready
-                        kubectl wait --for=condition=available --timeout=300s deployment/backend-deployment -n survey-app
-                        kubectl wait --for=condition=available --timeout=300s deployment/frontend-deployment -n survey-app
-                    '''
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        sh '''
+                            export KUBECONFIG=${KUBECONFIG}
+                            # Apply Kubernetes manifests
+                            kubectl apply -f k8s/namespace.yaml
+                            kubectl apply -f k8s/secrets.yaml
+                            kubectl apply -f k8s/mysql-deployment.yaml
+                            kubectl apply -f k8s/backend-deployment.yaml
+                            kubectl apply -f k8s/frontend-deployment.yaml
+                            
+                            # Wait for deployments to be ready
+                            kubectl wait --for=condition=available --timeout=300s deployment/backend-deployment -n survey-app
+                            kubectl wait --for=condition=available --timeout=300s deployment/frontend-deployment -n survey-app
+                        '''
+                    }
                 }
             }
         }
@@ -90,13 +92,16 @@ pipeline {
         stage('Health Check') {
             steps {
                 script {
-                    sh '''
-                        # Check if pods are running
-                        kubectl get pods -n survey-app
-                        
-                        # Check services
-                        kubectl get svc -n survey-app
-                    '''
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        sh '''
+                            export KUBECONFIG=${KUBECONFIG}
+                            # Check if pods are running
+                            kubectl get pods -n survey-app
+                            
+                            # Check services
+                            kubectl get svc -n survey-app
+                        '''
+                    }
                 }
             }
         }
@@ -110,9 +115,6 @@ pipeline {
         failure {
             echo 'Pipeline failed!'
             // Add notification here
-        }
-        always {
-            cleanWs()
         }
     }
 }
