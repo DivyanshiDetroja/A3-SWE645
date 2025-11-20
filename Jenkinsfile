@@ -44,7 +44,7 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
-                            echo ${DOCKER_PASS} | docker login ${DOCKER_REGISTRY} -u ${DOCKER_USER} --password-stdin
+                            echo ${DOCKER_PASS} | docker login docker.io -u ${DOCKER_USER} --password-stdin
                             docker push ${DOCKER_REGISTRY}/hw3-survey-backend:${IMAGE_TAG}
                             docker push ${DOCKER_REGISTRY}/hw3-survey-backend:latest
                             docker push ${DOCKER_REGISTRY}/hw3-survey-frontend:${IMAGE_TAG}
